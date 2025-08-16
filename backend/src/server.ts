@@ -2,7 +2,7 @@
 import express from 'express';
 import cors from 'cors';
 import { Pool } from 'pg';
-import { TaskController } from './src/controllers/task.controller'; // Ensure this file exists at the correct path
+import { TaskController } from './controllers/task.controller'; // Ensure this file exists at the correct path
 
 // Database Connection
 const pool = new Pool({

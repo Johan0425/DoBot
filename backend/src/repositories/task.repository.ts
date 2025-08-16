@@ -2,8 +2,8 @@
 import { Pool } from 'pg';
 import { v4 as uuidv4 } from 'uuid';
 
-// Type Definitions
-interface Task {
+// Type Definitions - EXPORTAR EXPLÍCITAMENTE
+export interface Task {
   id: string;
   title: string;
   description: string;
@@ -64,10 +64,10 @@ export class TaskRepository {
     if (fields.length === 0) {
       return this.findById(id);
     }
-    
+        
     values.push(id);
     const query = `UPDATE tasks SET ${fields.join(', ')} WHERE id = $${paramIndex} RETURNING *;`;
-    
+        
     const result = await this.pool.query(query, values);
     const row = result.rows[0];
     if (!row) return null;
