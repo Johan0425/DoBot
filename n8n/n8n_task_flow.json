@@ -1,0 +1,74 @@
+{
+    "nodes": [
+      {
+        "parameters": {
+          "chatMessage": {
+            "triggerOnWords": [
+              "sugerir tareas",
+              "qué tareas están bloqueadas",
+              "quién tiene más tareas pendientes"
+            ]
+          },
+          "options": {}
+        },
+        "name": "Trigger On Chat Message (AI)",
+        "type": "n8n-nodes-base.triggerOnChat",
+        "typeVersion": 1,
+        "position": [250, 300]
+      },
+      {
+        "parameters": {
+          "url": "=http://backend:3000/api/tareas",
+          "authentication": "none",
+          "options": {}
+        },
+        "name": "Get All Tasks (API)",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 1,
+        "position": [450, 300]
+      },
+      {
+        "parameters": {
+          "prompt": "Eres un asistente de gestión de proyectos experto en tableros Kanban. Tu tarea es analizar una lista de tareas en formato JSON y responder preguntas. La lista de tareas es: {{$json.response.json()}}.\n\nLa pregunta del usuario es: {{$json.body.message.text}}\n\nSi la pregunta es 'sugerir tareas', sugiere 3 tareas de desarrollo web. Si la pregunta es 'qué tareas están bloqueadas', lista las tareas con estado 'Bloqueada'. Si es 'quién tiene más tareas pendientes', cuenta las tareas con estado 'Creada' o 'En progreso' por responsable y responde quién tiene más. Sé conciso y directo.",
+          "model": "gpt-3.5-turbo",
+          "modelOptions": {},
+          "options": {}
+        },
+        "name": "AI Agent (OpenAI/Gemini)",
+        "type": "n8n-nodes-base.openAi",
+        "typeVersion": 1,
+        "position": [650, 300]
+      },
+      {
+        "parameters": {
+          "functionCode": "return [\n    {\n        json: {\n            message: $json.text\n        }\n    }\n];",
+          "options": {}
+        },
+        "name": "Format Response",
+        "type": "n8n-nodes-base.function",
+        "typeVersion": 1,
+        "position": [850, 300]
+      }
+    ],
+    "connections": {
+      "Trigger On Chat Message (AI)": [
+        {
+          "node": "Get All Tasks (API)",
+          "port": 0
+        }
+      ],
+      "Get All Tasks (API)": [
+        {
+          "node": "AI Agent (OpenAI/Gemini)",
+          "port": 0
+        }
+      ],
+      "AI Agent (OpenAI/Gemini)": [
+        {
+          "node": "Format Response",
+          "port": 0
+        }
+      ]
+    }
+  }
+  

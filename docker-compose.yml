@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: dobot-backend
+    ports:
+      - "3000:3000"
+    environment:
+      - DB_HOST=postgres
+      - DB_USER=dobot
+      - DB_PASSWORD=dobotpassword
+      - DB_NAME=dobot
+    networks:
+      - dobot-network
+    depends_on:
+      - postgres
+
+  frontend:
+    build: ./frontend
+    container_name: dobot-frontend
+    ports:
+      - "5173:5173"
+    networks:
+      - dobot-network
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: dobot-n8n
+    ports:
+      - "5678:5678"
+    volumes:
+      - ./n8n:/home/node/.n8n
+    restart: unless-stopped
+    networks:
+      - dobot-network
+    depends_on:
+      - backend
+
+  postgres:
+    image: postgres:14-alpine
+    container_name: dobot-postgres
+    environment:
+      - POSTGRES_USER=dobot
+      - POSTGRES_PASSWORD=dobotpassword
+      - POSTGRES_DB=dobot
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - dobot-network
+
+networks:
+  dobot-network:
+    external: true
+
+volumes:
+  postgres_data:
