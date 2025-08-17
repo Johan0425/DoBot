@@ -1,74 +1,355 @@
 {
-    "nodes": [
-      {
-        "parameters": {
-          "chatMessage": {
-            "triggerOnWords": [
-              "sugerir tareas",
-              "qué tareas están bloqueadas",
-              "quién tiene más tareas pendientes"
-            ]
+  "name": "Task Management System",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "tasks-webhook",
+        "options": {}
+      },
+      "id": "trigger-basic-tasks",
+      "name": "Webhook Trigger (Tasks)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "tasks-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
           },
-          "options": {}
-        },
-        "name": "Trigger On Chat Message (AI)",
-        "type": "n8n-nodes-base.triggerOnChat",
-        "typeVersion": 1,
-        "position": [250, 300]
-      },
-      {
-        "parameters": {
-          "url": "=http://backend:3000/api/tareas",
-          "authentication": "none",
-          "options": {}
-        },
-        "name": "Get All Tasks (API)",
-        "type": "n8n-nodes-base.httpRequest",
-        "typeVersion": 1,
-        "position": [450, 300]
-      },
-      {
-        "parameters": {
-          "prompt": "Eres un asistente de gestión de proyectos experto en tableros Kanban. Tu tarea es analizar una lista de tareas en formato JSON y responder preguntas. La lista de tareas es: {{$json.response.json()}}.\n\nLa pregunta del usuario es: {{$json.body.message.text}}\n\nSi la pregunta es 'sugerir tareas', sugiere 3 tareas de desarrollo web. Si la pregunta es 'qué tareas están bloqueadas', lista las tareas con estado 'Bloqueada'. Si es 'quién tiene más tareas pendientes', cuenta las tareas con estado 'Creada' o 'En progreso' por responsable y responde quién tiene más. Sé conciso y directo.",
-          "model": "gpt-3.5-turbo",
-          "modelOptions": {},
-          "options": {}
-        },
-        "name": "AI Agent (OpenAI/Gemini)",
-        "type": "n8n-nodes-base.openAi",
-        "typeVersion": 1,
-        "position": [650, 300]
-      },
-      {
-        "parameters": {
-          "functionCode": "return [\n    {\n        json: {\n            message: $json.text\n        }\n    }\n];",
-          "options": {}
-        },
-        "name": "Format Response",
-        "type": "n8n-nodes-base.function",
-        "typeVersion": 1,
-        "position": [850, 300]
-      }
-    ],
-    "connections": {
-      "Trigger On Chat Message (AI)": [
-        {
-          "node": "Get All Tasks (API)",
-          "port": 0
+          "conditions": [
+            {
+              "id": "condition1",
+              "leftValue": "={{ $json.body.message || $json.message }}",
+              "rightValue": "create task",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
         }
-      ],
-      "Get All Tasks (API)": [
-        {
-          "node": "AI Agent (OpenAI/Gemini)",
-          "port": 0
+      },
+      "id": "check-message-type",
+      "name": "Check Message Type",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [450, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "let message = $input.first().json.body?.message || $input.first().json.message || '';\nlet parts = message.replace('create task:', '').split(',');\nreturn [\n    {\n        title: parts[0]?.trim() || '',\n        description: parts[1]?.trim() || '',\n        assignee: parts[2]?.trim() || '',\n        status: 'Creada'\n    }\n];"
+      },
+      "id": "extract-task-details",
+      "name": "Extract Task Details",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 150]
+    },
+    {
+      "parameters": {
+        "url": "http://backend:3000/api/tasks",
+        "authentication": "none",
+        "requestMethod": "POST",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "create-task-api",
+      "name": "Create Task (API)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [850, 150]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition1",
+              "leftValue": "={{ $json.body.message.text }}",
+              "rightValue": "list tasks",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
         }
-      ],
-      "AI Agent (OpenAI/Gemini)": [
-        {
-          "node": "Format Response",
-          "port": 0
+      },
+      "id": "check-list-command",
+      "name": "Check List Command",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [450, 350]
+    },
+    {
+      "parameters": {
+        "url": "http://backend:3000/api/tasks",
+        "authentication": "none",
+        "options": {}
+      },
+      "id": "list-tasks-api",
+      "name": "List Tasks (API)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [650, 350]
+    },
+    {
+      "parameters": {
+        "jsCode": "let tasks = $input.first().json.map(task => `ID: ${task.id}\\nTitle: ${task.title}\\nStatus: ${task.status}\\nAssignee: ${task.assignee}\\n\\n`);\nreturn [\n    {\n        message: `Tasks in the system:\\n${tasks.join('')}`\n    }\n];"
+      },
+      "id": "format-task-list",
+      "name": "Format Task List",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 350]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition1",
+              "leftValue": "={{ $json.body.message.text }}",
+              "rightValue": "change status",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
         }
+      },
+      "id": "check-change-status",
+      "name": "Check Change Status",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [450, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "let message = $input.first().json.body?.message || $input.first().json.message || '';\nlet parts = message.replace('change status of task:', '').split(',');\nreturn [\n    {\n        id: parts[0]?.trim() || '',\n        status: parts[1]?.trim() || ''\n    }\n];"
+      },
+      "id": "extract-status-details",
+      "name": "Extract Status Change Details",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 500]
+    },
+    {
+      "parameters": {
+        "url": "=http://backend:3000/api/tasks/{{ $json.id }}",
+        "authentication": "none",
+        "requestMethod": "PUT",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "update-task-status-api",
+      "name": "Update Task Status (API)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [850, 500]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai-webhook",
+        "options": {}
+      },
+      "id": "trigger-ai-tasks",
+      "name": "Webhook Trigger (AI)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 700],
+      "webhookId": "ai-webhook"
+    },
+    {
+      "parameters": {
+        "url": "http://backend:3000/api/tasks",
+        "authentication": "none",
+        "options": {}
+      },
+      "id": "get-all-tasks-api",
+      "name": "Get All Tasks (API)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [450, 700]
+    },
+    {
+      "parameters": {
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredential",
+        "genericAuthType": "httpHeaderAuth",
+        "requestMethod": "POST",
+        "jsonBody": "={{ {\n  \"model\": \"gpt-3.5-turbo\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a project management assistant and an expert on Kanban boards. Your task is to analyze a list of tasks in JSON format and answer questions.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": `The task list is: ${JSON.stringify($json)}. The user's question is: ${$('Trigger On Chat Message (AI)').first().json.body.message.text}. If the question is 'suggest tasks', suggest 3 web development tasks. If the question is 'which tasks are blocked', list the tasks with a 'Blocked' status. If the question is 'who has more pending tasks', count the tasks with 'Created' or 'In Progress' status by assignee and state who has the most. Be concise and direct.`\n    }\n  ],\n  \"max_tokens\": 500\n} }}",
+        "options": {}
+      },
+      "id": "ai-agent-openai",
+      "name": "AI Agent (OpenAI)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [650, 700]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nlet message = '';\n\nif (response.choices && response.choices[0] && response.choices[0].message) {\n  message = response.choices[0].message.content;\n} else if (response.text) {\n  message = response.text;\n} else {\n  message = JSON.stringify(response);\n}\n\nreturn [{ message: message }];"
+      },
+      "id": "format-response",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 700]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Trigger On Chat Message (Tasks)": {
+      "main": [
+        [
+          {
+            "node": "Check Message Type",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check List Command",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check Change Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Message Type": {
+      "main": [
+        [
+          {
+            "node": "Extract Task Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Task Details": {
+      "main": [
+        [
+          {
+            "node": "Create Task (API)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check List Command": {
+      "main": [
+        [
+          {
+            "node": "List Tasks (API)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Tasks (API)": {
+      "main": [
+        [
+          {
+            "node": "Format Task List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Change Status": {
+      "main": [
+        [
+          {
+            "node": "Extract Status Change Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Status Change Details": {
+      "main": [
+        [
+          {
+            "node": "Update Task Status (API)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger On Chat Message (AI)": {
+      "main": [
+        [
+          {
+            "node": "Get All Tasks (API)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get All Tasks (API)": {
+      "main": [
+        [
+          {
+            "node": "AI Agent (OpenAI)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent (OpenAI)": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
-  }
-  
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "combined-task-management",
+  "tags": []
+}

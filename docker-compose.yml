@@ -1,3 +1,4 @@
+# Use a newer version for health checks
 version: '3.8'
 
 services:
@@ -10,6 +11,11 @@ services:
       POSTGRES_DB: dobot
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dobot"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -24,7 +30,8 @@ services:
       DB_NAME: dobot
       DB_HOST: postgres
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
 
   frontend:
     build: ./frontend
@@ -35,7 +42,7 @@ services:
       - backend
 
   n8n:
-    image: n8nio/n8n:latest
+    image: n8nio/n8n:1.69.0
     restart: always
     ports:
       - "5678:5678"

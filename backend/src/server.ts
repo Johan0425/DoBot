@@ -1,10 +1,9 @@
-// src/server.ts
 import express from 'express';
 import cors from 'cors';
 import { Pool } from 'pg';
-import { TaskController } from './controllers/task.controller'; // Ensure this file exists at the correct path
+import { TaskController } from './controllers/task.controller'; // Se importa el nuevo controlador
 
-// Database Connection
+// Configuración de la base de datos
 const pool = new Pool({
   user: process.env.DB_USER || 'dobot',
   host: process.env.DB_HOST || 'postgres',
@@ -30,6 +29,7 @@ const createTable = async () => {
     console.log('Tasks table checked/created successfully.');
   } catch (err) {
     console.error('Error creating tasks table:', err);
+    process.exit(1);
   } finally {
     client.release();
   }

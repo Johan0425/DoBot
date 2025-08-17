@@ -1,6 +1,5 @@
-// src/components/TaskForm.jsx
 import React, { useState, useContext } from 'react';
-import { TaskContext } from '../context/TaskContext';
+import { TaskContext } from '../App';
 
 const TaskForm = ({ onClose, task }) => {
   const { addTask, editTask } = useContext(TaskContext);

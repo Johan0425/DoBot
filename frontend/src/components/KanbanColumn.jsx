@@ -1,4 +1,3 @@
-// src/components/KanbanColumn.jsx
 import React from 'react';
 import TaskCard from './TaskCard';
 

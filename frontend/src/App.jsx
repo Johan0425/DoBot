@@ -1,4 +1,3 @@
-// src/App.jsx
 import React, { useState, useEffect, createContext, useReducer } from 'react';
 import { getTasks, createTask, updateTask, deleteTask } from './services/apiService';
 import KanbanBoard from './components/KanbanBoard';
