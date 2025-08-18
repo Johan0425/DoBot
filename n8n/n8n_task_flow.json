@@ -1,5 +1,5 @@
 {
-  "name": "Task Management System",
+  "name": "DoBot Task Management System with Groq AI",
   "nodes": [
     {
       "parameters": {
@@ -171,15 +171,15 @@
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "ai-webhook",
+        "path": "dobot-ai",
         "options": {}
       },
-      "id": "trigger-ai-tasks",
-      "name": "Webhook Trigger (AI)",
+      "id": "trigger-dobot-ai",
+      "name": "DoBot AI Chat Trigger",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
-      "position": [250, 700],
-      "webhookId": "ai-webhook"
+      "position": [250, 800],
+      "webhookId": "dobot-ai"
     },
     {
       "parameters": {
@@ -187,41 +187,97 @@
         "authentication": "none",
         "options": {}
       },
-      "id": "get-all-tasks-api",
-      "name": "Get All Tasks (API)",
+      "id": "get-tasks-for-ai",
+      "name": "Get Tasks for AI Analysis",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [450, 700]
+      "position": [450, 800]
     },
     {
       "parameters": {
-        "url": "https://api.openai.com/v1/chat/completions",
-        "authentication": "genericCredential",
-        "genericAuthType": "httpHeaderAuth",
-        "requestMethod": "POST",
-        "jsonBody": "={{ {\n  \"model\": \"gpt-3.5-turbo\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a project management assistant and an expert on Kanban boards. Your task is to analyze a list of tasks in JSON format and answer questions.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": `The task list is: ${JSON.stringify($json)}. The user's question is: ${$('Trigger On Chat Message (AI)').first().json.body.message.text}. If the question is 'suggest tasks', suggest 3 web development tasks. If the question is 'which tasks are blocked', list the tasks with a 'Blocked' status. If the question is 'who has more pending tasks', count the tasks with 'Created' or 'In Progress' status by assignee and state who has the most. Be concise and direct.`\n    }\n  ],\n  \"max_tokens\": 500\n} }}",
-        "options": {}
+        "jsCode": "// Analizar las tareas y preparar contexto inteligente para DoBot\nconst tasks = $input.first().json || [];\nconst userMessage = $('DoBot AI Chat Trigger').first().json.body?.message || $('DoBot AI Chat Trigger').first().json.chatInput || '';\n\n// Estadísticas detalladas\nconst stats = {\n  total: tasks.length,\n  completed: tasks.filter(t => t.status?.toLowerCase().includes('complet') || t.status?.toLowerCase().includes('done')).length,\n  pending: tasks.filter(t => t.status?.toLowerCase().includes('creada') || t.status?.toLowerCase().includes('progress')).length,\n  blocked: tasks.filter(t => t.status?.toLowerCase().includes('blocked') || t.status?.toLowerCase().includes('bloqueada')).length,\n  inProgress: tasks.filter(t => t.status?.toLowerCase().includes('progress')).length\n};\n\n// Análisis por usuario\nconst tasksByUser = {};\nconst blockedTasks = [];\n\ntasks.forEach(task => {\n  const assignee = task.assignee || task.assignedTo || 'Sin asignar';\n  \n  if (!tasksByUser[assignee]) {\n    tasksByUser[assignee] = {\n      total: 0,\n      pending: 0,\n      completed: 0,\n      blocked: 0\n    };\n  }\n  \n  tasksByUser[assignee].total++;\n  \n  if (task.status?.toLowerCase().includes('complet') || task.status?.toLowerCase().includes('done')) {\n    tasksByUser[assignee].completed++;\n  } else if (task.status?.toLowerCase().includes('blocked') || task.status?.toLowerCase().includes('bloqueada')) {\n    tasksByUser[assignee].blocked++;\n    blockedTasks.push({\n      id: task.id,\n      title: task.title,\n      assignee: assignee,\n      description: task.description\n    });\n  } else {\n    tasksByUser[assignee].pending++;\n  }\n});\n\n// Usuario con más tareas pendientes\nconst userWithMostPending = Object.entries(tasksByUser)\n  .sort(([,a], [,b]) => b.pending - a.pending)[0];\n\n// Tareas recientes (últimas 5)\nconst recentTasks = tasks.slice(-5).map(task => ({\n  id: task.id,\n  title: task.title,\n  status: task.status,\n  assignee: task.assignee || 'Sin asignar'\n}));\n\n// Detectar tipo de pregunta para respuesta más inteligente\nconst questionType = {\n  isBlocked: userMessage.toLowerCase().includes('bloqueada') || userMessage.toLowerCase().includes('blocked'),\n  isWho: userMessage.toLowerCase().includes('quien') || userMessage.toLowerCase().includes('who'),\n  isSuggest: userMessage.toLowerCase().includes('suger') || userMessage.toLowerCase().includes('suggest'),\n  isStatus: userMessage.toLowerCase().includes('estado') || userMessage.toLowerCase().includes('status'),\n  isGeneral: userMessage.toLowerCase().includes('hola') || userMessage === '' || userMessage.toLowerCase().includes('help')\n};\n\nreturn {\n  tasks,\n  userMessage,\n  stats,\n  tasksByUser,\n  blockedTasks,\n  userWithMostPending,\n  recentTasks,\n  questionType,\n  timestamp: new Date().toISOString()\n};"
       },
-      "id": "ai-agent-openai",
-      "name": "AI Agent (OpenAI)",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [650, 700]
-    },
-    {
-      "parameters": {
-        "jsCode": "const response = $input.first().json;\nlet message = '';\n\nif (response.choices && response.choices[0] && response.choices[0].message) {\n  message = response.choices[0].message.content;\n} else if (response.text) {\n  message = response.text;\n} else {\n  message = JSON.stringify(response);\n}\n\nreturn [{ message: message }];"
-      },
-      "id": "format-response",
-      "name": "Format Response",
+      "id": "analyze-tasks-smart",
+      "name": "Smart Task Analysis",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [850, 700]
+      "position": [650, 800]
+    },
+    {
+      "parameters": {
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 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"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "llama-3.1-70b-versatile"
+            },
+            {
+              "name": "messages",
+              "value": "={{ [\n  {\n    \"role\": \"system\",\n    \"content\": `Eres DoBot 🤖, un asistente inteligente de gestión de tareas para el sistema DoBot. Siempre responde en español de manera profesional pero amigable.\n\n📊 DATOS ACTUALES DEL PROYECTO:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n📈 Estadísticas Generales:\n• Total de tareas: ${$json.stats.total}\n• ✅ Completadas: ${$json.stats.completed}\n• 🔄 En progreso: ${$json.stats.inProgress}\n• ⏳ Pendientes: ${$json.stats.pending}\n• 🚫 Bloqueadas: ${$json.stats.blocked}\n\n👥 Distribución por Usuario:\n${Object.entries($json.tasksByUser).map(([user, data]) => \n  `• ${user}: ${data.total} total (${data.pending} pendientes, ${data.completed} completadas, ${data.blocked} bloqueadas)`\n).join('\\n')}\n\n${$json.blockedTasks.length > 0 ? `🚫 Tareas Bloqueadas Actuales:\n${$json.blockedTasks.map(task => \n  `• ID ${task.id}: \"${task.title}\" - Asignada a: ${task.assignee}`\n).join('\\n')}` : '✅ No hay tareas bloqueadas actualmente'}\n\n${$json.userWithMostPending ? `👤 Usuario con más tareas pendientes: ${$json.userWithMostPending[0]} (${$json.userWithMostPending[1].pending} tareas)` : ''}\n\n🎯 INSTRUCCIONES ESPECÍFICAS:\n• Si preguntan por tareas bloqueadas: Lista las específicas con detalles\n• Si preguntan quién tiene más tareas: Responde con datos exactos\n• Si piden sugerencias: Crea 3 tareas realistas para desarrollo web\n• Si saludan o preguntan estado general: Da resumen + sugerencias automáticas\n• Si piden ayuda: Explica qué puedes hacer\n• Siempre sé conciso pero completo\n• Usa emojis para hacer las respuestas más visuales\n• Sugiere acciones concretas cuando sea apropiado`\n  },\n  {\n    \"role\": \"user\",\n    \"content\": $json.userMessage || \"Hola DoBot, ¿cuál es el estado actual del proyecto?\"\n  }\n] }}"
+            },
+            {
+              "name": "max_tokens",
+              "value": 800
+            },
+            {
+              "name": "temperature",
+              "value": 0.7
+            },
+            {
+              "name": "top_p",
+              "value": 0.9
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "groq-ai-agent",
+      "name": "DoBot Groq AI Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [850, 800]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Procesar respuesta de Groq y agregar funcionalidades adicionales\nconst groqResponse = $input.first().json;\nconst analysisData = $('Smart Task Analysis').first().json;\n\nlet aiMessage = '';\n\n// Extraer mensaje de la respuesta de Groq\nif (groqResponse.choices && groqResponse.choices[0] && groqResponse.choices[0].message) {\n  aiMessage = groqResponse.choices[0].message.content;\n} else {\n  aiMessage = '❌ Error al procesar la respuesta de la IA. Inténtalo de nuevo.';\n}\n\n// Agregar sugerencias automáticas inteligentes\nlet autoSuggestions = [];\n\n// Lógica de sugerencias automáticas basada en el análisis\nif (analysisData.stats.blocked > 0) {\n  autoSuggestions.push(`🚨 Atención: Hay ${analysisData.stats.blocked} tareas bloqueadas que requieren intervención`);\n}\n\nif (analysisData.stats.pending > analysisData.stats.completed && analysisData.stats.total > 3) {\n  autoSuggestions.push(`📊 Las tareas pendientes (${analysisData.stats.pending}) superan a las completadas (${analysisData.stats.completed})`);\n}\n\nif (analysisData.userWithMostPending && analysisData.userWithMostPending[1].pending > 3) {\n  autoSuggestions.push(`👤 ${analysisData.userWithMostPending[0]} tiene sobrecarga de trabajo con ${analysisData.userWithMostPending[1].pending} tareas pendientes`);\n}\n\nif (analysisData.stats.total === 0) {\n  autoSuggestions.push(`🎯 El proyecto está vacío. ¡Es hora de crear las primeras tareas!`);\n}\n\n// Si es una consulta general, agregar las sugerencias\nif (analysisData.questionType.isGeneral || analysisData.questionType.isStatus) {\n  if (autoSuggestions.length > 0) {\n    aiMessage += `\\n\\n💡 **Recomendaciones automáticas:**\\n${autoSuggestions.map(s => `• ${s}`).join('\\n')}`;\n  }\n  \n  // Agregar acciones rápidas\n  aiMessage += `\\n\\n🔧 **Acciones disponibles:**\\n• Pregúntame \"¿qué tareas están bloqueadas?\"\\n• Pregúntame \"¿quién tiene más tareas pendientes?\"\\n• Dime \"sugiere tareas\" para obtener nuevas ideas\\n• Consulta el \"estado del proyecto\" en cualquier momento`;\n}\n\n// Agregar timestamp y metadata\nconst finalResponse = {\n  message: aiMessage,\n  suggestions: autoSuggestions,\n  timestamp: new Date().toLocaleString('es-ES'),\n  stats: {\n    totalTasks: analysisData.stats.total,\n    blockedTasks: analysisData.stats.blocked,\n    pendingTasks: analysisData.stats.pending\n  }\n};\n\nreturn finalResponse;"
+      },
+      "id": "format-ai-response",
+      "name": "Format AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 800]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}"
+      },
+      "id": "send-ai-response",
+      "name": "Send AI Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1250, 800]
     }
   ],
   "pinData": {},
   "connections": {
-    "Trigger On Chat Message (Tasks)": {
+    "Webhook Trigger (Tasks)": {
       "main": [
         [
           {
@@ -308,33 +364,55 @@
         ]
       ]
     },
-    "Trigger On Chat Message (AI)": {
+    "DoBot AI Chat Trigger": {
       "main": [
         [
           {
-            "node": "Get All Tasks (API)",
+            "node": "Get Tasks for AI Analysis",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Get All Tasks (API)": {
+    "Get Tasks for AI Analysis": {
       "main": [
         [
           {
-            "node": "AI Agent (OpenAI)",
+            "node": "Smart Task Analysis",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "AI Agent (OpenAI)": {
+    "Smart Task Analysis": {
       "main": [
         [
           {
-            "node": "Format Response",
+            "node": "DoBot Groq AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DoBot Groq AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Format AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format AI Response": {
+      "main": [
+        [
+          {
+            "node": "Send AI Response",
             "type": "main",
             "index": 0
           }
@@ -346,10 +424,10 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "1",
+  "versionId": "2",
   "meta": {
     "templateCredsSetupCompleted": true
   },
-  "id": "combined-task-management",
+  "id": "dobot-groq-ai-system",
   "tags": []
 }

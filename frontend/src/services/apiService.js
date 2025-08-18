@@ -8,7 +8,6 @@ export const getTasks = async () => {
   return response.json();
 };
 
-// Funciones adicionales para n8n
 export const createTaskViaWebhook = async (taskData) => {
   const response = await fetch('http://localhost:5678/webhook/create-task', {
     method: 'POST',

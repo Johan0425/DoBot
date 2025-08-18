@@ -1,11 +1,8 @@
-// src/context/TaskContext.jsx
 import React, { createContext, useReducer, useState, useEffect } from 'react';
 import { getTasks, createTask, updateTask, deleteTask } from '../services/apiService';
 
-// Task Context for global state management
 export const TaskContext = createContext();
 
-// Reducer function to handle state updates immutably
 const taskReducer = (state, action) => {
   switch (action.type) {
     case 'SET_TASKS':
@@ -28,7 +25,6 @@ export const TaskProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Fetch tasks from the API on component mount
   useEffect(() => {
     fetchTasks();
   }, []);

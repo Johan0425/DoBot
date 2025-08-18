@@ -2,17 +2,18 @@ import express from 'express';
 import cors from 'cors';
 import { Pool } from 'pg';
 import { TaskController } from './controllers/task.controller'; // Se importa el nuevo controlador
+import dotenv from 'dotenv';
 
-// Configuración de la base de datos
+dotenv.config();
+
 const pool = new Pool({
-  user: process.env.DB_USER || 'dobot',
-  host: process.env.DB_HOST || 'postgres',
-  database: process.env.DB_NAME || 'dobot',
-  password: process.env.DB_PASSWORD || 'dobotpassword',
-  port: 5432,
+  user: process.env.DB_USER,
+  host: process.env.DB_HOST,
+  database: process.env.DB_NAME,
+  password: process.env.DB_PASSWORD,
+  port: Number(process.env.DB_PORT) || 5432,
 });
 
-// Create tasks table if it doesn't exist
 const createTable = async () => {
   const client = await pool.connect();
   try {
@@ -35,7 +36,6 @@ const createTable = async () => {
   }
 };
 
-// Server Initialization
 const app = express();
 const PORT = 3000;
 const taskController = new TaskController(pool);
@@ -43,13 +43,11 @@ const taskController = new TaskController(pool);
 app.use(cors());
 app.use(express.json());
 
-// Routes
 app.get('/api/tasks', (req, res) => taskController.getTasks(req, res));
 app.post('/api/tasks', (req, res) => taskController.createTask(req, res));
 app.put('/api/tasks/:id', (req, res) => taskController.updateTask(req, res));
 app.delete('/api/tasks/:id', (req, res) => taskController.deleteTask(req, res));
 
-// Start the server and connect to the database
 const startServer = async () => {
   await createTable();
   app.listen(PORT, () => {

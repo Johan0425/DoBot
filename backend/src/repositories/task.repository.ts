@@ -1,8 +1,6 @@
-// src/repositories/task.repository.ts
 import { Pool } from 'pg';
 import { v4 as uuidv4 } from 'uuid';
 
-// Type Definitions - EXPORTAR EXPLÍCITAMENTE
 export interface Task {
   id: string;
   title: string;
@@ -19,7 +17,7 @@ export class TaskRepository {
     const result = await this.pool.query('SELECT * FROM tasks ORDER BY created_at DESC');
     return result.rows.map(row => ({
       ...row,
-      createdAt: new Date(row.created_at) // Convert to Date object
+      createdAt: new Date(row.created_at) 
     }));
   }
 

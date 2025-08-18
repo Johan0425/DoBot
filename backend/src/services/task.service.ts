@@ -1,8 +1,6 @@
-// src/services/task.service.ts
 import { TaskRepository, Task } from '../repositories/task.repository';
 import { Pool } from 'pg';
 
-// Type Definitions
 export interface TaskData {
   title: string;
   description: string;
@@ -22,7 +20,6 @@ export class TaskService {
   }
 
   public async createTask(taskData: TaskData): Promise<Task> {
-    // Business logic can go here, for example, validation
     const { title, description, status, assignee } = taskData;
     if (!title || !description || !status || !assignee) {
       throw new Error('All fields are required.');
