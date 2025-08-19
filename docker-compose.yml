@@ -1,5 +1,9 @@
 version: '3.8'
 
+networks:
+  dobot-network:
+    driver: bridge
+
 services:
   postgres:
     image: postgres:13-alpine
@@ -17,6 +21,8 @@ services:
       retries: 5
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - dobot-network
 
   backend:
     build: ./backend
@@ -24,18 +30,29 @@ services:
     ports:
       - "3000:3000"
     environment:
-      ENV_FILE: ./.env
+      - DATABASE_URL=${DATABASE_URL}
+      - NODE_ENV=${NODE_ENV}
+      - PORT=3000
+      - N8N_WEBHOOK_URL=http://n8n:5678/webhook
+      - GROQ_API_KEY=${GROQ_API_KEY}
     depends_on:
       postgres:
         condition: service_healthy
+    networks:
+      - dobot-network
 
   frontend:
     build: ./frontend
     restart: always
     ports:
       - "5173:80"
+    environment:
+      - VITE_API_BASE=http://localhost:3000/api
+      - VITE_N8N_BASE=http://localhost:5678/webhook
     depends_on:
       - backend
+    networks:
+      - dobot-network
 
   n8n:
     image: n8nio/n8n:1.69.0
@@ -44,11 +61,28 @@ services:
       - "5678:5678"
     environment:
       - N8N_BASIC_AUTH_ACTIVE=false
-      - N8N_HOST=localhost
+      - N8N_HOST=0.0.0.0
       - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - NODE_ENV=production
+      - WEBHOOK_URL=http://localhost:5678/
       - GENERIC_TIMEZONE=America/Bogota
+      - N8N_LOG_LEVEL=info
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=dobot
+      - DB_POSTGRESDB_USER=dobot
+      - DB_POSTGRESDB_PASSWORD=dobotpassword
+      - GROQ_API_KEY=${GROQ_API_KEY}
     volumes:
       - n8n_data:/home/node/.n8n
+      - ./n8n/workflows:/home/node/.n8n/workflows
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - dobot-network
 
 volumes:
   postgres_data:

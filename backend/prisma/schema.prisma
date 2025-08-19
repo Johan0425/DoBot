@@ -1,12 +1,78 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+# Prisma Database Schema Documentation
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+## Overview
+This schema defines a task management system with users, tasks, and task assignments using PostgreSQL as the database provider.
+
+## Generator Configuration
+- **Client**: Prisma Client for JavaScript
+- **Binary Targets**: Native platform binaries
+
+## Database Configuration
+- **Provider**: PostgreSQL
+- **Connection**: Uses `DATABASE_URL` environment variable
+
+## Enums
+
+### TaskStatus
+Defines the possible states of a task:
+- `Created` - Initial state when task is created
+- `InProgress` - Task is actively being worked on
+- `Blocked` - Task is blocked by dependencies or issues
+- `Completed` - Task has been finished
+- `Cancelled` - Task has been cancelled
+
+## Models
+
+### User
+Represents system users who can be assigned to tasks.
+
+**Fields:**
+- `id` - Auto-incrementing primary key
+- `name` - Unique username (required)
+- `email` - Optional unique email address
+- `createdAt` - Timestamp of user creation (auto-generated)
+- `assignments` - Related task assignments
+
+**Table Name:** `users`
+
+### Task
+Represents individual tasks in the system.
+
+**Fields:**
+- `id` - Auto-incrementing primary key
+- `title` - Task title (required)
+- `description` - Optional task description (mapped to `desc` column)
+- `status` - Current task status (defaults to `Created`)
+- `createdAt` - Timestamp of task creation (auto-generated)
+- `assignments` - Related task assignments
+
+**Table Name:** `tasks`
+
+### TaskAssignment
+Junction table linking users to tasks with assignment metadata.
+
+**Fields:**
+- `id` - Auto-incrementing primary key
+- `taskId` - Foreign key to Task
+- `userId` - Foreign key to User
+- `assignedAt` - Timestamp of assignment (auto-generated)
+- `task` - Related Task entity (cascade delete)
+- `user` - Related User entity (cascade delete)
+
+**Constraints:**
+- Unique combination of `taskId` and `userId` (prevents duplicate assignments)
+
+**Table Name:** `task_assignments`
+
+## Relationships
+- Users can have multiple task assignments (one-to-many)
+- Tasks can have multiple task assignments (one-to-many)
+- TaskAssignments belong to one user and one task (many-to-one)
+- Cascade deletion ensures assignments are removed when parent entities are deleted
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
+  binaryTargets = ["native"]
 }
 
 datasource db {
@@ -16,19 +82,43 @@ datasource db {
 
 enum TaskStatus {
   Created
-  In_progress
+  InProgress
   Blocked
   Completed
   Cancelled
 }
 
-model Task {
-  id            Int        @id @default(autoincrement())
-  title         String
-  description   String?
-  status        TaskStatus @default(Created)
-  assignee      String
-  createdAt     DateTime   @default(now()) @map("fecha_creacion")
-  
-  @@map("tasks") // Maps to existing table name if needed
+model User {
+  id          Int              @id @default(autoincrement())
+  name        String           @unique
+  email       String?          @unique
+  createdAt   DateTime         @default(now()) @map("created_at")
+  assignments TaskAssignment[]
+
+  @@map("users")
 }
+
+model Task {
+  id          Int              @id @default(autoincrement())
+  title       String
+  description String?           @map("desc")
+  status      TaskStatus        @default(Created)
+  createdAt   DateTime          @default(now()) @map("created_at")
+  assignments TaskAssignment[]
+
+  @@map("tasks")
+}
+
+model TaskAssignment {
+  id         Int      @id @default(autoincrement())
+  taskId     Int
+  userId     Int
+  assignedAt DateTime @default(now()) @map("assigned_at")
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, userId])
+  @@map("task_assignments")
+}
+
