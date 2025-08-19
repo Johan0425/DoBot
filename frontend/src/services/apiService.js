@@ -1,61 +1,99 @@
-const API_URL = 'http://backend:3000/api/tasks';
 
-export const getTasks = async () => {
-  const response = await fetch(API_URL);
-  if (!response.ok) {
-    throw new Error('Failed to fetch tasks');
+
+/**
+ * API Service module for DoBot frontend application.
+ * Provides functions to interact with both direct API endpoints and N8N webhook endpoints.
+ * Handles task management operations including CRUD operations, AI chat functionality,
+ * and webhook-based task creation. Automatically resolves host configuration based on
+ * environment variables or defaults to localhost with configurable ports.
+ * 
+ * @module apiService
+ * @requires fetch - For making HTTP requests
+ * @requires window - Browser window object for hostname resolution
+ * 
+ * Environment Variables:
+ * - VITE_API_BASE: Base URL for the API (default: http://HOST:3000/api/tasks)
+ * - VITE_API_PORT: Port for the API server (default: 3000)
+ * - VITE_N8N_BASE: Base URL for N8N webhooks (default: http://HOST:5678/webhook)
+ * - VITE_N8N_PORT: Port for N8N server (default: 5678)
+ * 
+ * @example
+ * import { getTasks, createTask, chatWithAI } from './services/apiService.js';
+ * 
+ * // Get all tasks
+ * const tasks = await getTasks();
+ * 
+ * // Create a new task
+ * const newTask = await createTask({ title: 'New Task', description: 'Task description' });
+ * 
+ * // Chat with AI
+ * const response = await chatWithAI('Hello AI');
+ */
+
+const resolveHost = () =>
+  (typeof window !== 'undefined' ? window.location.hostname : 'localhost');
+
+const HOST = resolveHost();
+const API_BASE =
+  import.meta.env.VITE_API_BASE ||
+  `http://${HOST}:${import.meta.env.VITE_API_PORT || 3000}/api/tasks`;
+const N8N_BASE =
+  import.meta.env.VITE_N8N_BASE ||
+  `http://${HOST}:${import.meta.env.VITE_N8N_PORT || 5678}/webhook`;
+
+const JSON_HEADERS = { 'Content-Type': 'application/json' };
+
+const handle = async (promise) => {
+  const res = await promise;
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(text || `API error ${res.status}`);
   }
-  return response.json();
+  if (res.status === 204) return null;
+  return res.json();
 };
 
-export const createTaskViaWebhook = async (taskData) => {
-  const response = await fetch('http://localhost:5678/webhook/create-task', {
+export const chatWithAI = (message) =>
+  handle(fetch('http://localhost:5678/webhook/dobot-ai', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(taskData)
-  });
-  return response.json();
-};
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ message })
+  }));
 
-export const getTasksViaWebhook = async () => {
-  const response = await fetch('http://localhost:5678/webhook/list-tasks');
-  return response.json();
-};
-
-export const createTask = async (taskData) => {
-  const response = await fetch(API_URL, {
+export const createTaskViaN8N = (message) =>
+  handle(fetch('http://localhost:5678/webhook/tasks-webhook', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(taskData),
-  });
-  if (!response.ok) {
-    throw new Error('Failed to create task');
-  }
-  return response.json();
-};
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ message })
+  }));
 
-export const updateTask = async (taskId, taskData) => {
-  const response = await fetch(`${API_URL}/${taskId}`, {
+export const getTasks = () => handle(fetch(API_BASE));
+
+export const createTask = (data) =>
+  handle(fetch(API_BASE, {
+    method: 'POST',
+    headers: JSON_HEADERS,
+    body: JSON.stringify(data)
+  }));
+
+export const updateTask = (id, data) =>
+  handle(fetch(`${API_BASE}/${id}`, {
     method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(taskData),
-  });
-  if (!response.ok) {
-    throw new Error('Failed to update task');
-  }
-  return response.json();
-};
+    headers: JSON_HEADERS,
+    body: JSON.stringify(data)
+  }));
 
-export const deleteTask = async (taskId) => {
-  const response = await fetch(`${API_URL}/${taskId}`, {
-    method: 'DELETE',
-  });
-  if (!response.ok) {
-    throw new Error('Failed to delete task');
-  }
-  return response.status === 204;
-};
+export const deleteTask = (id) =>
+  handle(fetch(`${API_BASE}/${id}`, { method: 'DELETE' }));
+
+export const createTaskViaWebhook = (data) =>
+  handle(fetch(`${N8N_BASE}/create-task`, {
+    method: 'POST',
+    headers: JSON_HEADERS,
+    body: JSON.stringify(data)
+  }));
+
+export const getTasksViaWebhook = () =>
+  handle(fetch(`${N8N_BASE}/list-tasks`));
+
+export const apiInfo = () => ({ API_BASE, N8N_BASE });

@@ -3,7 +3,8 @@
 @import 'tailwindcss/components';
 @import 'tailwindcss/utilities';
 
-/* Variables CSS personalizadas */
+
+
 :root {
   --primary-gradient: linear-gradient(135deg, #06b6d4 0%, #a855f7 50%, #ec4899 100%);
   --glass-bg: rgba(255, 255, 255, 0.1);
@@ -13,7 +14,6 @@
   --blur-filter: blur(20px);
 }
 
-/* Reset y configuración base */
 * {
   box-sizing: border-box;
 }
@@ -34,7 +34,6 @@ html, body {
   min-height: 100vh;
 }
 
-/* Utilidades de clipping de texto */
 .line-clamp-1 {
   display: -webkit-box;
   -webkit-line-clamp: 1;
@@ -56,7 +55,6 @@ html, body {
   overflow: hidden;
 }
 
-/* Efectos de glassmorphism */
 .glass {
   background: var(--glass-bg);
   backdrop-filter: var(--blur-filter);
@@ -64,7 +62,6 @@ html, body {
   box-shadow: var(--shadow-secondary);
 }
 
-/* Animaciones personalizadas */
 @keyframes slideInUp {
   from {
     opacity: 0;
@@ -171,7 +168,6 @@ html, body {
   }
 }
 
-/* Clases de utilidad para animaciones */
 .animate-slide-up {
   animation: slideInUp 0.6s ease-out;
 }
@@ -208,7 +204,6 @@ html, body {
   animation: shimmer 2s linear infinite;
 }
 
-/* Efectos de hover mejorados */
 .hover-lift {
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
@@ -238,7 +233,6 @@ html, body {
   filter: blur(20px);
 }
 
-/* Scrollbars personalizadas */
 .custom-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: rgba(6, 182, 212, 0.5) transparent;
@@ -263,7 +257,6 @@ html, body {
   background: linear-gradient(135deg, #0891b2, #9333ea);
 }
 
-/* Efectos de texto */
 .text-gradient {
   background: var(--primary-gradient);
   -webkit-background-clip: text;
@@ -275,7 +268,6 @@ html, body {
   text-shadow: 0 0 20px rgba(6, 182, 212, 0.5);
 }
 
-/* Estados de carga */
 .loading-spinner {
   display: inline-block;
   width: 20px;
@@ -312,7 +304,6 @@ html, body {
   }
 }
 
-/* Efectos de partículas */
 .particle-container {
   position: relative;
   overflow: hidden;
@@ -328,7 +319,6 @@ html, body {
   animation: float 4s ease-in-out infinite;
 }
 
-/* Efectos de drag and drop */
 .drag-preview {
   opacity: 0.8;
   transform: rotate(5deg) scale(1.05);
@@ -375,7 +365,6 @@ html, body {
   }
 }
 
-/* Estados de focus mejorados */
 .focus-ring {
   transition: all 0.2s ease;
 }
@@ -385,7 +374,6 @@ html, body {
   box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.3);
 }
 
-/* Efectos de botones */
 .btn-primary {
   background: var(--primary-gradient);
   border: none;
@@ -423,7 +411,6 @@ html, body {
   left: 100%;
 }
 
-/* Efectos de card mejorados */
 .card-hover {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -435,7 +422,6 @@ html, body {
     0 0 50px rgba(6, 182, 212, 0.1);
 }
 
-/* Utilidades adicionales */
 .backdrop-blur-heavy {
   backdrop-filter: blur(40px);
 }
@@ -459,7 +445,6 @@ html, body {
   mask-composite: exclude;
 }
 
-/* Optimizaciones de rendimiento */
 .gpu-accelerated {
   transform: translateZ(0);
   will-change: transform;

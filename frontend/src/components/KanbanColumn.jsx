@@ -1,5 +1,42 @@
+/**
+ * KanbanColumn Component
+ * 
+ * A highly interactive and visually appealing Kanban column component that displays tasks
+ * with advanced drag-and-drop functionality, glassmorphism design, and dynamic visual effects.
+ * 
+ * Features:
+ * - Drag and drop support with visual feedback
+ * - Configurable column themes with gradients, icons, and colors
+ * - Hover and interaction animations
+ * - Progress tracking for completed tasks
+ * - Custom scrollbar styling
+ * - Empty state with animated drop zones
+ * - Particle effects during drag operations
+ * - Task counter with floating indicator
+ * 
+ * @component
+ * @param {Object} props - Component properties
+ * @param {string} props.status - The status/type of the column ('Created', 'InProgress', 'Blocked', 'Completed', 'Cancelled')
+ * @param {Array<Object>} props.tasks - Array of task objects to display in the column
+ * @param {Function} props.onDragOver - Callback function triggered when dragging over the column
+ * @param {Function} props.onDrop - Callback function triggered when dropping a task (receives event and status)
+ * @param {Function} props.onEditTask - Callback function for editing tasks
+ * 
+ * @returns {JSX.Element} A fully interactive Kanban column with advanced visual effects
+ * 
+ * @example
+ * <KanbanColumn
+ *   status="InProgress"
+ *   tasks={[{id: 1, title: "Task 1", status: "InProgress"}]}
+ *   onDragOver={handleDragOver}
+ *   onDrop={handleDrop}
+ *   onEditTask={handleEditTask}
+ * />
+ */
 import React, { useState } from 'react';
 import TaskCard from './TaskCard';
+
+
 
 const KanbanColumn = ({ status, tasks, onDragOver, onDrop, onEditTask }) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -13,7 +50,7 @@ const KanbanColumn = ({ status, tasks, onDragOver, onDrop, onEditTask }) => {
       shadow: 'rgba(71, 85, 105, 0.3)',
       description: 'New tasks ready to start'
     },
-    'In Progress': { 
+    'InProgress': {  
       gradient: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)', 
       accent: '#60a5fa',
       icon: '⚡',
@@ -52,7 +89,6 @@ const KanbanColumn = ({ status, tasks, onDragOver, onDrop, onEditTask }) => {
   };
 
   const handleDragLeave = (e) => {
-    // Solo cambiar el estado si realmente salimos del componente
     if (!e.currentTarget.contains(e.relatedTarget)) {
       setIsDragOver(false);
     }
@@ -63,7 +99,6 @@ const KanbanColumn = ({ status, tasks, onDragOver, onDrop, onEditTask }) => {
     setIsDragOver(false);
     onDrop(e, status);
     
-    // Añadir efecto visual de confirmación
     const dropEffect = document.createElement('div');
     dropEffect.className = 'drop-effect';
     dropEffect.textContent = '✨ Task moved!';

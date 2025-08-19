@@ -1,5 +1,41 @@
+/**
+ * TaskCard Component
+ * 
+ * A draggable task card component that displays task information with visual effects and animations.
+ * Supports editing, deletion, and provides hover interactions with 3D transforms and particle effects.
+ * 
+ * @component
+ * @param {Object} props - The component props
+ * @param {Object} props.task - The task object containing task details
+ * @param {string} props.task.id - Unique identifier for the task
+ * @param {string} props.task.title - Title of the task
+ * @param {string} props.task.description - Description of the task
+ * @param {string} props.task.status - Current status of the task (Created, InProgress, Blocked, Completed, Cancelled)
+ * @param {string[]} props.task.assignees - Array of names assigned to the task
+ * @param {string} props.task.created_at - ISO date string of when the task was created
+ * @param {Function} [props.onEditTask] - Optional callback function called when edit button is clicked
+ * @param {number} props.index - Index of the task card used for staggered animations
+ * 
+ * @returns {JSX.Element} A draggable task card with hover effects, edit/delete actions, and progress visualization
+ * 
+ * @example
+ * <TaskCard 
+ *   task={{
+ *     id: "1",
+ *     title: "Complete project",
+ *     description: "Finish the remaining tasks",
+ *     status: "InProgress",
+ *     assignees: ["John Doe", "Jane Smith"],
+ *     created_at: "2023-01-01T00:00:00Z"
+ *   }}
+ *   onEditTask={(task) => console.log('Edit task:', task)}
+ *   index={0}
+ * />
+ */
 import React, { useState, useContext } from 'react';
-import { TaskContext } from '../App';
+import { TaskContext } from '../context/TaskContext';
+
+
 
 const TaskCard = ({ task, onEditTask, index }) => {
   const { removeTask } = useContext(TaskContext);
@@ -9,13 +45,11 @@ const TaskCard = ({ task, onEditTask, index }) => {
   
   const handleDragStart = (e) => {
     e.dataTransfer.setData('taskId', task.id);
-    // Agregar efecto visual al arrastrar
     e.target.style.opacity = '0.8';
     e.target.style.transform = 'rotate(3deg)';
   };
 
   const handleDragEnd = (e) => {
-    // Restaurar apariencia normal
     e.target.style.opacity = '1';
     e.target.style.transform = 'rotate(0deg)';
   };
@@ -48,10 +82,21 @@ const TaskCard = ({ task, onEditTask, index }) => {
     }, 100);
   };
 
+  const getDisplayStatus = (status) => {
+    const statusNames = {
+      'Created': 'Created',
+      'InProgress': 'In Progress',
+      'Blocked': 'Blocked', 
+      'Completed': 'Completed',
+      'Cancelled': 'Cancelled'
+    };
+    return statusNames[status] || status;
+  };
+
   const getStatusColor = (status) => {
     const colors = {
       'Created': '#6b7280',
-      'In Progress': '#3b82f6',
+      'InProgress': '#3b82f6',  
       'Blocked': '#ef4444',
       'Completed': '#10b981',
       'Cancelled': '#8b5cf6'
@@ -60,7 +105,6 @@ const TaskCard = ({ task, onEditTask, index }) => {
   };
 
   const getPriorityIcon = () => {
-    // Simulamos prioridad basada en el ID para variedad visual
     const icons = ['🔥', '⭐', '📌', '💡', '🎯'];
     return icons[task.id % icons.length];
   };
@@ -177,39 +221,61 @@ const TaskCard = ({ task, onEditTask, index }) => {
         {task.description}
       </p>
       
-      {/* Información del assignee con avatar mejorado */}
+      {/* Información de los assignees con avatar mejorado */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="relative">
-              <div 
-                className="w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-sm transition-transform duration-300 hover:scale-110"
-                style={{ 
-                  background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)',
-                  boxShadow: '0 4px 12px rgba(168, 85, 247, 0.3)'
-                }}
-              >
-                {task.assignee.split(' ').map(n => n[0]).join('')}
-              </div>
-              {/* Indicador de estado online */}
-              <div 
-                className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-slate-800"
-                style={{ background: '#10b981' }}
-              />
+            
+            {/* Avatares múltiples */}
+            <div className="flex -space-x-2">
+              {task.assignees.slice(0, 3).map((name) => (
+                <div key={name} className="relative">
+                  <div 
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-sm transition-transform duration-300 hover:scale-110"
+                    style={{ 
+                      background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)',
+                      boxShadow: '0 4px 12px rgba(168, 85, 247, 0.3)'
+                    }}
+                    title={name}
+                  >
+                    {name.split(' ').map(n => n[0]).join('').slice(0,2)}
+                  </div>
+                  {/* Indicador de estado online */}
+                  <div 
+                    className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-slate-800"
+                    style={{ background: '#10b981' }}
+                  />
+                </div>
+              ))}
+
+              {/* Si hay más de 3, se muestra contador */}
+              {task.assignees.length > 3 && (
+                <div 
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-slate-300 bg-slate-700 text-xs font-medium"
+                >
+                  +{task.assignees.length - 3}
+                </div>
+              )}
             </div>
+
+            {/* Nombres de asignados */}
             <div>
-              <span className="text-slate-300 font-medium text-sm">{task.assignee}</span>
+              <span className="text-slate-300 font-medium text-sm">
+                {task.assignees.join(', ')}
+              </span>
               <p className="text-slate-500 text-xs">Assigned</p>
             </div>
           </div>
           
-          <div className="text-right">
+           {/* Fecha */}
+           <div className="text-right">
             <div className="text-slate-500 text-xs">{getFormattedDate(task.created_at)}</div>
             <div className="flex items-center space-x-1 text-slate-600 text-xs mt-1">
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span>Created</span>
+              {/* ✅ Mostrar el estado real de la tarea */}
+              <span>{getDisplayStatus(task.status)}</span>
             </div>
           </div>
         </div>
@@ -221,7 +287,7 @@ const TaskCard = ({ task, onEditTask, index }) => {
             style={{
               background: `linear-gradient(90deg, ${getStatusColor(task.status)}, ${getStatusColor(task.status)}80)`,
               width: task.status === 'Completed' ? '100%' : 
-                     task.status === 'In Progress' ? '60%' : 
+                     task.status === 'InProgress' ? '60%' : 
                      task.status === 'Blocked' ? '30%' : '10%',
               boxShadow: `0 0 10px ${getStatusColor(task.status)}40`
             }}

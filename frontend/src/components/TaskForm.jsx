@@ -1,21 +1,81 @@
+/**
+ * TaskForm component for creating and editing tasks with assignee management.
+ * 
+ * This component renders a modal form that allows users to create new tasks or edit existing ones.
+ * It includes functionality for managing task assignees by selecting from existing people or
+ * adding new people to the system. The form includes validation and handles both creation
+ * and editing workflows.
+ * 
+ * @component
+ * @param {Object} props - The component props
+ * @param {Function} props.onClose - Callback function to close the modal form
+ * @param {Object} [props.task] - Optional task object for editing mode. If provided, the form
+ *                                will be in edit mode and pre-populated with task data
+ * @param {string} props.task.id - Unique identifier for the task (required for editing)
+ * @param {string} props.task.title - Task title
+ * @param {string} props.task.description - Task description
+ * @param {string} props.task.status - Task status (Created, InProgress, Blocked, Completed, Cancelled)
+ * @param {string[]} [props.task.assignees] - Array of assignee names
+ * 
+ * @requires TaskContext - Uses TaskContext for addTask, editTask, people, and addPerson functions
+ * 
+ * @example
+ * // Create new task
+ * <TaskForm onClose={() => setShowForm(false)} />
+ * 
+ * @example
+ * // Edit existing task
+ * <TaskForm 
+ *   onClose={() => setShowForm(false)} 
+ *   task={{ id: 1, title: "Sample Task", description: "Task desc", status: "Created", assignees: ["John"] }}
+ * />
+ */
 import React, { useState, useContext } from 'react';
-import { TaskContext } from '../App';
+import { TaskContext } from '../context/TaskContext';
+
+
 
 const TaskForm = ({ onClose, task }) => {
-  const { addTask, editTask } = useContext(TaskContext);
-  const [formState, setFormState] = useState(task || {
+  const { addTask, editTask, people, addPerson } = useContext(TaskContext);
+  const [newPerson, setNewPerson] = useState('');
+  const [formState, setFormState] = useState(task ? {
+    ...task,
+    assignees: task.assignees || []
+  } : {
     title: '',
     description: '',
     status: 'Created',
-    assignee: '',
+    assignees: []
   });
 
   const isEditing = !!task;
-  const assignees = ['Juan Henao', 'Maria Perez', 'Carlos Gomez', 'Ana Lopez', 'Pepe Vargas'];
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormState(prev => ({ ...prev, [name]: value }));
+  const toggleAssignee = (name) => {
+    setFormState(prev => ({
+      ...prev,
+      assignees: prev.assignees.includes(name)
+        ? prev.assignees.filter(a => a !== name)
+        : [...prev.assignees, name]
+    }));
+  };
+
+  const handleAddPerson = (e) => {
+    e.preventDefault();
+    e.stopPropagation(); 
+    
+    const name = newPerson.trim();
+    if (!name) return;
+    
+    addPerson(name);
+    toggleAssignee(name);
+    setNewPerson('');
+  };
+
+  const handlePersonKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddPerson(e);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -29,77 +89,120 @@ const TaskForm = ({ onClose, task }) => {
       onClose();
     } catch (error) {
       console.error('Error saving task:', error);
-      alert('There was an error saving the task. Please try again.');
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50">
-      <div className="bg-gray-800 p-8 rounded-lg shadow-2xl w-full max-w-lg relative">
-        <h2 className="text-2xl font-bold text-white mb-6">{isEditing ? 'Edit Task' : 'Create New Task'}</h2>
-        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
+      <div className="w-full max-w-lg bg-slate-800/90 backdrop-blur rounded-2xl border border-slate-600 p-6">
+        <h2 className="text-xl font-semibold mb-4">
+          {isEditing ? 'Edit Task' : 'New Task'}
+        </h2>
+        
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-gray-300">Title</label>
+            <label className="block text-sm font-medium mb-1">Title</label>
             <input
-              type="text"
-              name="title"
+              className="w-full rounded-md bg-slate-700 border border-slate-600 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
               value={formState.title}
-              onChange={handleChange}
-              className="mt-1 block w-full bg-gray-700 text-white rounded-md p-2 border border-gray-600 focus:ring-blue-500 focus:border-blue-500"
+              onChange={e => setFormState(s => ({ ...s, title: e.target.value }))}
               required
+              placeholder="Enter task title"
             />
           </div>
+
           <div>
-            <label className="block text-gray-300">Description</label>
+            <label className="block text-sm font-medium mb-1">Description</label>
             <textarea
-              name="description"
+              rows={3}
+              className="w-full rounded-md bg-slate-700 border border-slate-600 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 resize-none"
               value={formState.description}
-              onChange={handleChange}
-              rows="3"
-              className="mt-1 block w-full bg-gray-700 text-white rounded-md p-2 border border-gray-600 focus:ring-blue-500 focus:border-blue-500"
+              onChange={e => setFormState(s => ({ ...s, description: e.target.value }))}
               required
-            ></textarea>
+              placeholder="Describe the task..."
+            />
           </div>
+
           <div>
-            <label className="block text-gray-300">Assignee</label>
+            <label className="block text-sm font-medium mb-1">Status</label>
             <select
-              name="assignee"
-              value={formState.assignee}
-              onChange={handleChange}
-              className="mt-1 block w-full bg-gray-700 text-white rounded-md p-2 border border-gray-600 focus:ring-blue-500 focus:border-blue-500"
-              required
-            >
-              <option value="">Select an assignee</option>
-              {assignees.map(resp => <option key={resp} value={resp}>{resp}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-gray-300">Status</label>
-            <select
-              name="status"
+              className="w-full rounded-md bg-slate-700 border border-slate-600 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
               value={formState.status}
-              onChange={handleChange}
-              className="mt-1 block w-full bg-gray-700 text-white rounded-md p-2 border border-gray-600 focus:ring-blue-500 focus:border-blue-500"
-              required
+              onChange={e => setFormState(s => ({ ...s, status: e.target.value }))}
             >
               <option value="Created">Created</option>
-              <option value="In Progress">In Progress</option>
+              <option value="InProgress">In Progress</option>
               <option value="Blocked">Blocked</option>
               <option value="Completed">Completed</option>
               <option value="Cancelled">Cancelled</option>
             </select>
           </div>
-          <button
-            type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-lg transform transition-transform duration-200 hover:scale-105 mt-6"
-          >
-            {isEditing ? 'Save Changes' : 'Create Task'}
-          </button>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">Assignees</label>
+            
+            {/* List of existing people */}
+            <div className="flex flex-wrap gap-2 mb-3">
+              {people.map(p => {
+                const active = formState.assignees.includes(p);
+                return (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => toggleAssignee(p)}
+                    className={`px-3 py-1 rounded-full text-xs border transition-all duration-200 ${
+                      active
+                        ? 'bg-cyan-600 text-white border-cyan-400 shadow-lg shadow-cyan-500/25'
+                        : 'bg-slate-700 text-slate-300 border-slate-600 hover:border-slate-400 hover:bg-slate-600'
+                    }`}
+                  >
+                    {active && '✓ '}{p}
+                  </button>
+                );
+              })}
+              {people.length === 0 && (
+                <span className="text-xs text-slate-400 italic">No people yet</span>
+              )}
+            </div>
+
+            {/* Section to add new person */}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="New person"
+                value={newPerson}
+                onChange={e => setNewPerson(e.target.value)}
+                onKeyPress={handlePersonKeyPress} 
+                className="flex-1 rounded-md bg-slate-700 border border-slate-600 p-2 text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              />
+              <button
+                type="button" 
+                onClick={handleAddPerson}
+                disabled={!newPerson.trim()}
+                className="px-3 py-2 rounded-md bg-slate-600 text-xs font-medium hover:bg-slate-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+              >
+                Add
+              </button>
+            </div>
+          </div>
+
+          {/* Main form buttons */}
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-2 rounded-md bg-slate-700 hover:bg-slate-600 text-sm transition-colors duration-200"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!formState.title.trim() || !formState.description.trim()}
+              className="flex-1 py-2 rounded-md bg-cyan-600 hover:bg-cyan-500 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+            >
+              {isEditing ? 'Save' : 'Create'}
+            </button>
+          </div>
         </form>
       </div>
     </div>

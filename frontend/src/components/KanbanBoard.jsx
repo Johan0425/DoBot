@@ -1,9 +1,46 @@
+/**
+ * KanbanBoard Component - A comprehensive task management board with drag-and-drop functionality
+ * 
+ * This component provides a complete Kanban board interface with the following features:
+ * - Interactive drag-and-drop task management across different status columns
+ * - Real-time statistics dashboard with animated progress indicators
+ * - Floating particle background effects and gradient animations
+ * - Modal-based task creation and editing forms
+ * - Toast notification system for user feedback
+ * - Responsive design with hover effects and 3D transformations
+ * - Loading states with custom animated spinners
+ * 
+ * The board supports five task statuses: Created, InProgress, Blocked, Completed, and Cancelled
+ * 
+ * @component
+ * @returns {JSX.Element} The complete Kanban board interface
+ * 
+ * @requires TaskContext - Context providing task data and CRUD operations
+ * @requires KanbanColumn - Individual column component for each status
+ * @requires TaskForm - Modal form component for task creation/editing
+ * 
+ * @example
+ * // Basic usage within a TaskContext provider
+ * <TaskProvider>
+ *   <KanbanBoard />
+ * </TaskProvider>
+ * 
+ * @features
+ * - Drag and drop task management
+ * - Real-time statistics with completion rates
+ * - Animated UI components with glassmorphism effects
+ * - Responsive grid layout (1-5 columns based on screen size)
+ * - Auto-dismissing notification system
+ * - Loading states and error handling
+ * - 3D hover effects and gradient animations
+ */
 import React, { useState, useContext, useEffect } from 'react';
-import { TaskContext } from '../App';
+import { TaskContext } from '../context/TaskContext'; 
 import KanbanColumn from './KanbanColumn';
 import TaskForm from './TaskForm';
 
-// Componente de partículas flotantes
+
+
 const FloatingParticles = () => {
   return (
     <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
@@ -27,7 +64,6 @@ const FloatingParticles = () => {
   );
 };
 
-// Componente de estadísticas mejorado
 const StatsCard = ({ icon, title, value, gradient, shadow, description, trend }) => {
   const [isHovered, setIsHovered] = useState(false);
   
@@ -102,7 +138,6 @@ const StatsCard = ({ icon, title, value, gradient, shadow, description, trend })
   );
 };
 
-// Componente principal del tablero Kanban
 const KanbanBoard = () => {
   const { tasks, loading, error, updateTaskStatus } = useContext(TaskContext);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -110,16 +145,14 @@ const KanbanBoard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [notification, setNotification] = useState(null);
   
-  const statuses = ['Created', 'In Progress', 'Blocked', 'Completed', 'Cancelled'];
+  const statuses = ['Created', 'InProgress', 'Blocked', 'Completed', 'Cancelled'];
 
-  // Simulación de carga inicial
   useEffect(() => {
     setTimeout(() => {
       setIsLoading(false);
     }, 2000);
   }, []);
 
-  // Manejo de errores con notificaciones
   useEffect(() => {
     if (error) {
       setNotification({
@@ -130,7 +163,6 @@ const KanbanBoard = () => {
     }
   }, [error]);
 
-  // Auto-dismissal de notificaciones
   useEffect(() => {
     if (notification && notification.timeout) {
       const timer = setTimeout(() => {
@@ -181,16 +213,14 @@ const KanbanBoard = () => {
     setIsFormOpen(true);
   };
 
-  // Calcular estadísticas
   const stats = {
     total: tasks.length,
-    inProgress: tasks.filter(t => t.status === 'In Progress').length,
+    inProgress: tasks.filter(t => t.status === 'InProgress').length,
     completed: tasks.filter(t => t.status === 'Completed').length,
     blocked: tasks.filter(t => t.status === 'Blocked').length,
     completionRate: tasks.length > 0 ? Math.round((tasks.filter(t => t.status === 'Completed').length / tasks.length) * 100) : 0
   };
 
-  // Pantalla de carga inicial
   if (isLoading) {
     return (
       <div 
@@ -309,7 +339,7 @@ const KanbanBoard = () => {
           />
           <StatsCard 
             icon="⚡" 
-            title="In Progress" 
+            title="InProgress" 
             value={stats.inProgress}
             description="Active development"
             gradient="linear-gradient(135deg, #f59e0b 0%, #d97706 100%)"
